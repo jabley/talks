@@ -1,0 +1,307 @@
+# A talk about Go showing mistakes to be avoided when coming from other
+# languages, discussion about strengths, and perceived shortcomings
+# like dependency management.
+
+A journey in Go
+I made all the mistakes so you don't have to
+11:00 11 Sep 2015
+Tags: golang, experience
+
+James Abley
+Technical Architect
+Government Digital Service
+@jabley
+
+# Hello
+# Originally this was going to be a description of journey and mistakes
+# I had made in my code. Less likely to offend people if I point out my
+# own stupidity.
+
+# Then I realised I had 10 minutes. Well, Roy Fielding likes to say
+# that constraints are a good thing, so I've hopefully come up with a
+# more useful thing in this way.
+
+* Plan
+What is it, what's good, and what's not
+
+# What is it section
+* Go
+Open source programming language that makes it easy to build simple,
+reliable, and efficient software
+
+# Easy. See Rich Hickey simple made easy.
+# Easy means familiar. Simple means straightforward.
+# I'm not sure that easy is the right word here. I think they mean simple. 
+
+* Go
+Statically typed, with fast compile times
+
+# Comes from Rob Pike and Ken Thompson sitting around waiting for C++
+# apps to build
+
+# [[https://www.dreamsongs.com/RiseOfWorseIsBetter.html][New Jersey style]]
+
+* Go
+'Statically linked' native binaries
+
+# Need to do a little work to avoid glibc dependencies...
+
+# Where does it come from?
+* Tony Hoare's CSP paper (1978)
+
+Input, output, and concurrency
+
+# Mutually cooperating processes which participate in events
+
+* Concurrency versus parallelism
+
+.image images/con_and_par.jpg
+
+# See https://joearms.github.io/2013/04/05/concurrent-and-parallel-programming.html
+
+# Go gives you both, via using all the cores for parallelism, and
+# offering simple concurrency constructs
+
+* Vending Machine
+
+Communication equals sychronisation
+
+.image images/VendingMachine.png
+.image images/Person.png
+.image images/CoinCard.png
+
+# One of the archetypal CSP examples is an abstract representation of a
+# chocolate vending machine and its interactions with a person wishing
+# to buy some chocolate. This vending machine might be able to carry
+# out two different events, “coin” and “choc” which represent the
+# insertion of payment and the delivery of a chocolate respectively. A
+# machine which demands payment before offering a chocolate can be
+# written as VendingMachine.png
+
+# A person who might choose to use a coin or card to make payments
+# could be modelled as Person.png
+
+# These two processes can be put in parallel, so that they can
+# interact with each other. The behaviour of the composite process
+# depends on the events that the two component processes must
+# synchronise on. Thus CoinCard.png
+
+* Interfaces
+
+.code code/interfaces.go
+
+# What's good?
+
+* Religious formatting wars
+
+Get out!
+
+* 
+The standard library defines AST serialisation and parsing
+
+# With that defined as part of the language, formatting arguments go
+# away.
+
+# That's not my main point. It's all the other things AST manipulation
+# enables.
+
+* Tool maven or language maven?
+
+[[http://blog.osteele.com/posts/2004/11/ides/][Oliver Steele on IDEs]]
+
+# Source code querying
+
+* Refactoring
+[[http://martinfowler.com/articles/refactoringRubicon.html][Crossing Refactoring's Rubicon]]
+
+# Extract Method requires a AST to work with. We have that, remember?
+  
+* Backwards compatibility
+gofix gives migrations for code
+
+* Testing
+
+  > gom test \
+      . \
+      ./pkg/config/ \
+      ./pkg/dataset/ \
+      ./pkg/handlers/ \
+      ./pkg/request/ \
+      ./pkg/validation/
+  ok    _/Users/jamesabley/govuk/performance-datastore  0.012s
+  ok    _/Users/jamesabley/govuk/performance-datastore/pkg/config 0.048s
+  ok    _/Users/jamesabley/govuk/performance-datastore/pkg/dataset  0.087s
+  ok    _/Users/jamesabley/govuk/performance-datastore/pkg/handlers 0.139s
+  ok    _/Users/jamesabley/govuk/performance-datastore/pkg/request  1.307s
+  ok    _/Users/jamesabley/govuk/performance-datastore/pkg/validation 0.075s
+
+* Code coverage
+
+.image images/Go-coverage.png
+
+* Benchmarking: Before
+
+  > go test -bench .
+  PASS
+  BenchmarkMutexSameReadWrite1      100000         13965 ns/op
+  BenchmarkMutexSameReadWrite2       50000         28821 ns/op
+  BenchmarkMutexSameReadWrite4       30000         57187 ns/op
+  BenchmarkMutex1    20000         86459 ns/op
+  BenchmarkMutex2    10000        222826 ns/op
+  BenchmarkMutex3    20000         90147 ns/op
+  BenchmarkMutex4      200       7688993 ns/op
+  BenchmarkMutex5       30      50292186 ns/op
+  BenchmarkMutex6        5     298536790 ns/op
+  ok      _/Users/jabley/git/context  19.730s
+
+* Benchmarking: After
+
+  > go test -bench .
+  PASS
+  BenchmarkMutexSameReadWrite1      100000         12700 ns/op
+  BenchmarkMutexSameReadWrite2       50000         25692 ns/op
+  BenchmarkMutexSameReadWrite4       30000         50888 ns/op
+  BenchmarkMutex1    20000         71686 ns/op
+  BenchmarkMutex2    10000        197388 ns/op
+  BenchmarkMutex3    20000         77450 ns/op
+  BenchmarkMutex4      200       6996854 ns/op
+  BenchmarkMutex5       30      42156099 ns/op
+  BenchmarkMutex6        5     261614479 ns/op
+  ok      _/Users/jabley/git/context  17.295s
+
+* Other tools
+  - present
+  - godoc
+  - callgraph
+  - oracle
+
+# http://godoc.org/golang.org/x/tools  
+
+* Profiling
+
+CPU, memory
+
+* 
+  > go test -bench . -cpuprofile=cpu.out 
+  PASS
+  BenchmarkMutexSameReadWrite1-8    200000        7915 ns/op
+  BenchmarkMutexSameReadWrite2-8    100000       15200 ns/op
+  BenchmarkMutexSameReadWrite4-8     50000       28680 ns/op
+  BenchmarkMutex1-8                  30000       44158 ns/op
+  BenchmarkMutex2-8                  20000       80328 ns/op
+  BenchmarkMutex3-8                  30000       38513 ns/op
+  BenchmarkMutex4-8                   2000     1116875 ns/op
+  BenchmarkMutex5-8                    100    16718666 ns/op
+  BenchmarkMutex6-8                     20    70774584 ns/op
+  ok    github.com/jabley/context 16.428s
+
+* 
+  > go tool pprof context.test cpu.out 
+  Entering interactive mode (type "help" for commands)
+  (pprof) top
+  36040ms of 46340ms total (77.77%)
+  Dropped 111 nodes (cum <= 231.70ms)
+  Showing top 10 nodes out of 102 (cum >= 2660ms)
+        flat  flat%   sum%        cum   cum%
+     25830ms 55.74% 55.74%    25830ms 55.74%  runtime.mach_semaphore_wait
+      3060ms  6.60% 62.34%     3060ms  6.60%  runtime.usleep
+      1380ms  2.98% 65.32%     2900ms  6.26%  runtime.mallocgc
+      1340ms  2.89% 68.21%     1340ms  2.89%  runtime.mach_semaphore_signal
+       890ms  1.92% 70.13%      890ms  1.92%  runtime.aeshashbody
+       840ms  1.81% 71.95%     6090ms 13.14%  runtime.convT2E
+       760ms  1.64% 73.59%     2210ms  4.77%  runtime.mapaccess2
+       660ms  1.42% 75.01%     1330ms  2.87%  runtime.heapBitsBulkBarrier
+       650ms  1.40% 76.41%      670ms  1.45%  runtime.strequal
+       630ms  1.36% 77.77%     2660ms  5.74%  runtime.mapassign1
+
+* 
+
+.image images/go-profile-graph.png
+
+* Garbage Collection
+
+1.5 introduced GC intended for next 10 years of hardware and beyond
+
+# Smalltalk VM engineers got swallowed up into working on Java VMs at
+# IBM and Sun, then JavaScript VMs for Google, Microsoft.
+
+* 
+
+.image images/go-1.5-gc.png
+
+# https://twitter.com/brianhatfield/status/634166123605331968
+
+* Ecosystem support
+
+- Travis
+- Heroku
+
+# What's not section
+
+* Finest tradition of programming language talks
+
+* Clojure
+
+Look, we're running it in production!
+
+* Ruby
+
+We have a friendly community
+
+* Dependency management LOL
+
+* You're not Google*!
+
+# So many people read High Scalability and that ilk. For a lot of people, doing 1000 queries per minute is more than adequate.
+
+Not a monolithic repository for the company
+
+ * For most people
+
+* Ruby
+
+Ruby was released in 1995
+Bundler (created for Rails 3.0) – 2010
+
+* Java
+
+Java released in 1995
+Maven 2001 / 2002
+
+* Go
+
+- Godep
+- Gom
+- gb
+
+* Brainshare
+
+- Not a C++ killer, despite intention
+- More Java -> Python / Ruby -> Go
+
+* Summary
+ 
+CSP (not a scary Comp Sci thing)
+Interfaces
+Great tooling
+
+* Thank you
+
+We're hiring!
+
+[[https://gds.blog.gov.uk/jobs/]]
+
+* Links
+
+- [[https://blog.golang.org/go-fmt-your-code]]
+- [[http://blog.golang.org/introducing-gofix]]
+- [[http://danluu.com/monorepo/][Monolithic repos]]
+- [[https://github.com/gorilla/context/pull/21]]
+
+* Other problems
+
+- Generics (maybe use generate)
+
+* Things to include
+- 
+- Interfaces
